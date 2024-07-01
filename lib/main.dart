@@ -38,13 +38,15 @@ class _MyHomePageState extends State<MyHomePage> {
   String _error = '';
   int _currentPage = 1;
   int _totalPages = 1;
-  final int _pageSize = 10;
+  final int _pageSize = 10; // each page is having 10 articles
 
   Future<void> fetchArticles() async {
     setState(() {
       _isLoading = true;
       _error = '';
     });
+
+    //comment
 
     final String apiKey = 'b1fda43027ad496c8d89f8df2d316b61'; // Replace with your API key
     final String url = 'https://newsapi.org/v2/top-headlines?country=us&pageSize=$_pageSize&page=$_currentPage&apiKey=$apiKey';
@@ -194,7 +196,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 40.0),
+        padding: const EdgeInsets.only(bottom: 120.0, left: 350
+        ),
         child: FloatingActionButton(
           onPressed: fetchArticles,
           tooltip: 'Fetch Articles',
