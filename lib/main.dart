@@ -33,7 +33,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<dynamic> _articles = [];
+  List<Article> _articles = [];
   bool _isLoading = false;
   String _error = '';
   int _currentPage = 1;
@@ -46,8 +46,6 @@ class _MyHomePageState extends State<MyHomePage> {
       _error = '';
     });
 
-    //comment
-
     final String apiKey = 'b1fda43027ad496c8d89f8df2d316b61'; // Replace with your API key
     final String url = 'https://newsapi.org/v2/top-headlines?country=us&pageSize=$_pageSize&page=$_currentPage&apiKey=$apiKey';
 
@@ -56,9 +54,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
       if (response.statusCode == 200) {
         Map<String, dynamic> data = jsonDecode(response.body);
+        Welcome welcome = Welcome.fromJson(data); // Parse JSON into Dart model
+
         setState(() {
-          _articles = data['articles'];
-          _totalPages = (data['totalResults'] / _pageSize).ceil();
+          _articles = welcome.articles;
+          _totalPages = (welcome.totalResults / _pageSize).ceil();
           _isLoading = false;
         });
       } else {
@@ -126,6 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: ListView.builder(
                   itemCount: _articles.length,
                   itemBuilder: (context, index) {
+                    Article article = _articles[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Card(
@@ -137,9 +138,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ArticleDetailScreen(
-                                  title: _articles[index]['title'],
-                                  description: _articles[index]['description'] ?? 'No description available',
-                                  content: _articles[index]['content'] ?? 'No content available',
+                                  title: article.title,
+                                  description: article.description ?? 'No description available',
+                                  content: article.content ?? 'No content available',
                                 ),
                               ),
                             );
@@ -150,12 +151,12 @@ class _MyHomePageState extends State<MyHomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _articles[index]['title'],
+                                  article.title,
                                   style: Theme.of(context).textTheme.headline5,
                                 ),
                                 SizedBox(height: 10),
                                 Text(
-                                  _articles[index]['description'] ?? 'No description available',
+                                  article.description ?? 'No description available',
                                   style: Theme.of(context).textTheme.bodyText2,
                                 ),
                               ],
@@ -196,14 +197,85 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 120.0, left: 350
-        ),
+        padding: const EdgeInsets.only(bottom: 120.0, left: 350),
         child: FloatingActionButton(
           onPressed: fetchArticles,
           tooltip: 'Fetch Articles',
           child: Icon(Icons.download),
         ),
       ),
+    );
+  }
+}
+
+class Welcome {
+  String status;
+  int totalResults;
+  List<Article> articles;
+
+  Welcome({
+    required this.status,
+    required this.totalResults,
+    required this.articles,
+  });
+
+  factory Welcome.fromJson(Map<String, dynamic> json) {
+    return Welcome(
+      status: json['status'],
+      totalResults: json['totalResults'],
+      articles: List<Article>.from(json['articles'].map((x) => Article.fromJson(x))),
+    );
+  }
+}
+
+class Article {
+  Source source;
+  String? author;
+  String title;
+  String? description;
+  String url;
+  String? urlToImage;
+  DateTime publishedAt;
+  String? content;
+
+  Article({
+    required this.source,
+    required this.author,
+    required this.title,
+    required this.description,
+    required this.url,
+    required this.urlToImage,
+    required this.publishedAt,
+    required this.content,
+  });
+
+  factory Article.fromJson(Map<String, dynamic> json) {
+    return Article(
+      source: Source.fromJson(json['source']),
+      author: json['author'],
+      title: json['title'],
+      description: json['description'],
+      url: json['url'],
+      urlToImage: json['urlToImage'],
+      publishedAt: DateTime.parse(json['publishedAt']),
+      content: json['content'],
+    );
+  }
+}
+
+class Source {
+  String? id;
+  String? name;
+
+  Source({
+    required this.id,
+    required this.name,
+  });
+
+  factory Source.fromJson(Map<String, dynamic> json) {
+    return Source(
+      id: json['id'],
+      name: json['name'],
     );
   }
 }
