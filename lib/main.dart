@@ -33,59 +33,28 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Article> _articles = [];
-  bool _isLoading = false;
-  String _error = '';
   int _currentPage = 1;
   int _totalPages = 1;
   final int _pageSize = 10; // each page is having 10 articles
 
-  Future<void> fetchArticles() async {
-    setState(() {
-      _isLoading = true;
-      _error = '';
-    });
-
+  Future<Welcome> fetchArticles() async {
     final String apiKey = 'b1fda43027ad496c8d89f8df2d316b61'; // Replace with your API key
     final String url = 'https://newsapi.org/v2/top-headlines?country=us&pageSize=$_pageSize&page=$_currentPage&apiKey=$apiKey';
 
-    try {
-      final response = await http.get(Uri.parse(url));
+    final response = await http.get(Uri.parse(url));
 
-      if (response.statusCode == 200) {
-        Map<String, dynamic> data = jsonDecode(response.body);
-        Welcome welcome = Welcome.fromJson(data); // Parse JSON into Dart model
-
-        setState(() {
-          _articles = welcome.articles;
-          _totalPages = (welcome.totalResults / _pageSize).ceil();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _error = 'Failed to load data: ${response.reasonPhrase}';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _error = 'Failed to load data: $e';
-      });
+    if (response.statusCode == 200) {
+      Map<String, dynamic> data = jsonDecode(response.body);
+      return Welcome.fromJson(data);
+    } else {
+      throw Exception('Failed to load data: ${response.reasonPhrase}');
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchArticles();
   }
 
   void _nextPage() {
     if (_currentPage < _totalPages) {
       setState(() {
         _currentPage++;
-        fetchArticles();
       });
     }
   }
@@ -94,7 +63,6 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_currentPage > 1) {
       setState(() {
         _currentPage--;
-        fetchArticles();
       });
     }
   }
@@ -107,99 +75,113 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Center(
-          child: _isLoading
-              ? CircularProgressIndicator()
-              : _error.isNotEmpty
-              ? Text(
-            _error,
-            style: Theme.of(context).textTheme.bodyText1,
-          )
-              : _articles.isEmpty
-              ? Text(
-            'No Data Loaded',
-            style: Theme.of(context).textTheme.bodyText1,
-          )
-              : Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _articles.length,
-                  itemBuilder: (context, index) {
-                    Article article = _articles[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        elevation: 5,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ArticleDetailScreen(
-                                  title: article.title,
-                                  description: article.description ?? 'No description available',
-                                  content: article.content ?? 'No content available',
+        child: FutureBuilder<Welcome>(
+          future: fetchArticles(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Failed to load data: ${snapshot.error}',
+                  style: Theme.of(context).textTheme.bodyText1,
+                ),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.articles.isEmpty) {
+              return Center(
+                child: Text(
+                  'No Data Loaded',
+                  style: Theme.of(context).textTheme.bodyText1,
+                ),
+              );
+            }
+
+            final articles = snapshot.data!.articles;
+            _totalPages = (snapshot.data!.totalResults / _pageSize).ceil();
+
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: articles.length,
+                    itemBuilder: (context, index) {
+                      Article article = articles[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          elevation: 5,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ArticleDetailScreen(
+                                    title: article.title,
+                                    description: article.description ?? 'No description available',
+                                    content: article.content ?? 'No content available',
+                                  ),
                                 ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    article.title,
+                                    style: Theme.of(context).textTheme.headline5,
+                                  ),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    article.description ?? 'No description available',
+                                    style: Theme.of(context).textTheme.bodyText2,
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  article.title,
-                                  style: Theme.of(context).textTheme.headline5,
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  article.description ?? 'No description available',
-                                  style: Theme.of(context).textTheme.bodyText2,
-                                ),
-                              ],
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: _currentPage > 1 ? _previousPage : null,
-                    child: Text(
-                      'Previous',
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _currentPage > 1 ? _previousPage : null,
+                      child: Text(
+                        'Previous',
+                        style: Theme.of(context).textTheme.bodyText1,
+                      ),
+                    ),
+                    Text(
+                      'Page $_currentPage of $_totalPages',
                       style: Theme.of(context).textTheme.bodyText1,
                     ),
-                  ),
-                  Text(
-                    'Page $_currentPage of $_totalPages',
-                    style: Theme.of(context).textTheme.bodyText1,
-                  ),
-                  ElevatedButton(
-                    onPressed: _currentPage < _totalPages ? _nextPage : null,
-                    child: Text(
-                      'Next',
-                      style: Theme.of(context).textTheme.bodyText1,
+                    ElevatedButton(
+                      onPressed: _currentPage < _totalPages ? _nextPage : null,
+                      child: Text(
+                        'Next',
+                        style: Theme.of(context).textTheme.bodyText1,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 120.0, left: 350),
         child: FloatingActionButton(
-          onPressed: fetchArticles,
+          onPressed: () {
+            setState(() {});
+          },
           tooltip: 'Fetch Articles',
           child: Icon(Icons.download),
         ),
